@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books Collection</title>
+    <style>
+        /* Стили для страницы */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #5a5a5a;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .btn {
+            padding: 5px 10px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-delete {
+            background-color: #d9534f;
+        }
+        .btn-edit {
+            background-color: #5bc0de;
+        }
+        .btn-save {
+            background-color: #5cb85c;
+        }
+        .btn-add {
+            background-color: #5cb85c;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+        }
+        .btn-toggle-json {
+            background-color: #333;
+            margin-top: 20px;
+            display: block;
+            width: 100%;
+            padding: 10px;
+            text-align: center;
+        }
+        .form-container {
+            margin-top: 20px;
+        }
+        .form-input {
+            margin-bottom: 10px;
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .json-output {
+            margin-top: 20px;
+            background-color: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow-x: auto;
+            max-height: 200px;
+            display: none; /* Скрыть по умолчанию */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Books Collection</h1>
+        
+        <!-- Форма для добавления новой книги -->
+        <div class="form-container">
+            <input type="text" id="new-title" class="form-input" placeholder="Book Title">
+            <input type="text" id="new-author" class="form-input" placeholder="Author">
+            <button class="btn btn-add" onclick="addBook()">Add New Book</button>
+        </div>
+
+        <!-- Таблица с книгами -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="book-list">
+                <!-- Книги будут загружаться сюда -->
+            </tbody>
+        </table>
+
+        <!-- Кнопка для показа JSON-ответа -->
+        <button class="btn btn-toggle-json" onclick="toggleJson()">View JSON Response</button>
+
+        <!-- Поле для отображения JSON ответа -->
+        <pre id="json-response" class="json-output"></pre>
+    </div>
+
+    <script>
+        // Функция для показа или скрытия JSON-ответа
+        function toggleJson() {
+            const jsonOutput = document.getElementById('json-response');
+            jsonOutput.style.display = jsonOutput.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Функция для вывода JSON-ответа
+        function displayJsonResponse(data) {
+            document.getElementById('json-response').textContent = JSON.stringify(data, null, 2);
+            document.getElementById('json-response').style.display = 'block';
+        }
+
+        // Функция для загрузки книг с API
+        function loadBooks() {
+            fetch('/books')
+                .then(response => response.json())
+                .then(data => {
+                    const bookList = document.getElementById('book-list');
+                    bookList.innerHTML = ''; // Очистка списка
+                    data.forEach(book => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${book.id}</td>
+                            <td><span id="title-display-${book.id}">${book.title}</span><input type="text" value="${book.title}" id="title-input-${book.id}" style="display:none;"></td>
+                            <td><span id="author-display-${book.id}">${book.author}</span><input type="text" value="${book.author}" id="author-input-${book.id}" style="display:none;"></td>
+                            <td>
+                                <button class="btn btn-edit" id="edit-btn-${book.id}" onclick="enableEdit(${book.id})">Edit</button>
+                                <button class="btn btn-save" id="save-btn-${book.id}" onclick="saveBook(${book.id})" style="display:none;">Save</button>
+                                <button class="btn btn-delete" onclick="deleteBook(${book.id})">Delete</button>
+                            </td>
+                        `;
+                        bookList.appendChild(row);
+                    });
+                    displayJsonResponse(data); // Отображение JSON данных для списка книг
+                })
+                .catch(error => console.error("Error loading books:", error));
+        }
+
+        // Функция для добавления новой книги
+        function addBook() {
+            const title = document.getElementById('new-title').value;
+            const author = document.getElementById('new-author').value;
+
+            fetch('/books', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, author })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadBooks();
+                displayJsonResponse(data); // Отображение JSON ответа для добавленной книги
+                document.getElementById('new-title').value = '';
+                document.getElementById('new-author').value = '';
+            })
+            .catch(error => console.error("Error adding book:", error));
+        }
+
+        // Функция для включения редактирования книги
+        function enableEdit(id) {
+            document.getElementById(`title-display-${id}`).style.display = "none";
+            document.getElementById(`author-display-${id}`).style.display = "none";
+            document.getElementById(`title-input-${id}`).style.display = "inline";
+            document.getElementById(`author-input-${id}`).style.display = "inline";
+
+            document.getElementById(`edit-btn-${id}`).style.display = "none";
+            document.getElementById(`save-btn-${id}`).style.display = "inline";
+        }
+
+        // Функция для сохранения изменений книги
+        function saveBook(id) {
+            const title = document.getElementById(`title-input-${id}`).value;
+            const author = document.getElementById(`author-input-${id}`).value;
+
+            fetch(`/books/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, author })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadBooks();
+                displayJsonResponse(data); // Отображение JSON ответа для обновленной книги
+            })
+            .catch(error => console.error("Error saving book:", error));
+        }
+
+        // Функция для удаления книги
+        function deleteBook(id) {
+            fetch(`/books/${id}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (response.ok) {
+                    loadBooks();
+                    displayJsonResponse({ message: `Book with ID ${id} deleted` }); // JSON ответ для удаления
+                }
+            })
+            .catch(error => console.error("Error deleting book:", error));
+        }
+
+        // Загружаем книги при загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadBooks);
+    </script>
+</body>
+</html>
